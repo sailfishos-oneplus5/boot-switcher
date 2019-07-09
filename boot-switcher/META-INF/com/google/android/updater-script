@@ -1,0 +1,26 @@
+# >>> Initial sanity checks >>>
+
+# Device
+assert(getprop("ro.display.series") == "OnePlus 5" || abort("This package is for 'OnePlus 5' devices; this is a '" + getprop("ro.display.series") + "'."););
+
+# Firmware
+assert(oneplus.verify_modem("2018-11-06 18:11:36") == "1" || abort("OOS firmware 5.1.7 not present. Please upgrade your firmware and try again!"););
+
+# <<< Initial sanity checks <<<
+
+set_progress(0);
+
+# >>> Start switch-boot-target.sh >>>
+
+package_extract_file("hybris-boot.img", "/tmp/hybris-boot.img");
+package_extract_file("lineage-boot.img", "/tmp/lineage-boot.img");
+
+package_extract_file("switch-boot-target.sh", "/tmp/switch-boot-target.sh");
+set_metadata("/tmp/switch-boot-target.sh", "uid", 0, "gid", 0, "mode", 0755);
+show_progress(1, 3);
+assert(run_program("/tmp/switch-boot-target.sh") == "0" || abort("Boot target switching has failed! Check /tmp/recovery.log for details"););
+
+# <<< Done switch-boot-target.sh <<<
+
+# All done!
+set_progress(1);
