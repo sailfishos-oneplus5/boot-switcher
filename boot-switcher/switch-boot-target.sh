@@ -118,7 +118,6 @@ fi
 
 # Calculate centering offset indent on left
 target_len=`echo -n $TARGET_PRETTY | wc -m` # e.g. 21 for "LineageOS 15.1 (Oreo)"
-ui_write "target_len: '$target_len'" # TMP
 start=`expr 52 - 25 - $target_len` # e.g. 7 
 start=`expr $start / 2` # e.g. 3
 log "indent offset is $start for '$TARGET_PRETTY'"
