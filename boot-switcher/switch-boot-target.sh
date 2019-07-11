@@ -87,37 +87,20 @@ if [ -f "$TARGET_FILE" ]; then # Sailfish OS
 	rm "$TARGET_FILE"
 
 	TARGET="sfos"
-	SFOS_REL=`cat /data/.stowaways/sailfishos/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. '3.0.3.10 (Hossa)'
-	TARGET_PRETTY="SailfishOS $SFOS_REL" # e.g. "SailfishOS 3.0.3.10 (Hossa)"
+	SFOS_REL=`cat /data/.stowaways/sailfishos/etc/os-release | grep VERSION_ID= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. '3.0.3.10'
+	TARGET_PRETTY="SailfishOS $SFOS_REL" # e.g. "SailfishOS 3.0.3.10"
 else                           # LineageOS
 	touch "$TARGET_FILE"
 
-	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2 | cut -d'.' -f1` # e.g. "8"
-	DROID_REL="" # e.g. "Oreo"
-
-	if [ "$DROID_VER" = "9" ]; then
-		DROID_REL="Pie"
-	elif [ "$DROID_VER" = "8" ]; then
-		DROID_REL="Oreo"
-	elif [ "$DROID_VER" = "7" ]; then
-		DROID_REL="Nougat"
-	elif [ "$DROID_VER" = "6" ]; then
-		DROID_REL="Marshmellow"
-	elif [ "$DROID_VER" = "5" ]; then
-		DROID_REL="Lollipop"
-	elif [ "$DROID_VER" = "4" ]; then
-		DROID_REL="KitKat"
-	fi
-
-	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Oreo)"
+	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2 | sed -r 's/^.0+|.0+$//g'` # e.g. "8.1"
 
 	LOS_VER=`cat /system/build.prop | grep ro.lineage.build.version= | cut -d'=' -f'2'` # e.g. "15.1"
-	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
-	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS="0" # e.g. "LineageOS 15.1 (Oreo)"
+	TARGET_PRETTY="Android $DROID_VER" # e.g. "Android 7.1.1"
+	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER ($DROID_VER)" || TARGET_DROID_LOS="0" # e.g. "LineageOS 15.1 (8.1)"
 fi
 
 # Calculate centering offset indent on left
-target_len=`echo -n $TARGET_PRETTY | wc -m` # e.g. 21 for "LineageOS 15.1 (Oreo)"
+target_len=`echo -n $TARGET_PRETTY | wc -m` # e.g. 21 for "LineageOS 15.1 (8.1)"
 start=`expr 52 - 25 - $target_len` # e.g. 7 
 start=`expr $start / 2` # e.g. 3
 log "indent offset is $start for '$TARGET_PRETTY'"
