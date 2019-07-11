@@ -88,7 +88,7 @@ if [ -f "$TARGET_FILE" ]; then # Sailfish OS
 
 	TARGET="sfos"
 	SFOS_REL=`cat /data/.stowaways/sailfishos/etc/os-release | grep VERSION_ID= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. '3.0.3.10'
-	TARGET_PRETTY="SailfishOS $SFOS_REL" # e.g. "SailfishOS 3.0.3.10"
+	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.0.3.10"
 else                           # LineageOS
 	touch "$TARGET_FILE"
 
