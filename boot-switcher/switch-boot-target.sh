@@ -61,9 +61,7 @@ umount /system &> /dev/null
 mount /system || abort 2 "Couldn't mount /system!"
 umount /vendor &> /dev/null
 mount -o rw /vendor || abort 3 "Couldn't mount /vendor!"
-[[ -f /system/build.prop && -f /vendor/etc/init/hw/init.qcom.rc ]] || abort 4 "Please install LineageOS before flashing this zip."
-
-# TODO: Fix showing below message even after above abort?
+[[ "$(cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2)" = "15.1" && -f /vendor/etc/init/hw/init.qcom.rc ]] || abort 4 "Please factory reset & dirty flash LineageOS 15.1 before this zip."
 log "Android OS installation detected"
 
 # Sailfish OS
@@ -94,7 +92,7 @@ else                           # LineageOS
 
 	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2 | sed -r 's/^.0+|.0+$//g'` # e.g. "8.1"
 
-	LOS_VER=`cat /system/build.prop | grep ro.lineage.build.version= | cut -d'=' -f'2'` # e.g. "15.1"
+	LOS_VER=`cat /system/build.prop | grep ro.lineage.build.version= | cut -d'=' -f2` # e.g. "15.1"
 	TARGET_PRETTY="Android $DROID_VER" # e.g. "Android 7.1.1"
 	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER ($DROID_VER)" || TARGET_DROID_LOS="0" # e.g. "LineageOS 15.1 (8.1)"
 fi
@@ -138,7 +136,7 @@ if [ "$TARGET" = "sfos" ]; then
 	ui_print "       .,:lddo:'."
 	ui_print "      oxxo;."
 else
-	ln -sf /tmp/lineage-boot.img /tmp/boot.img
+	ln -sf /tmp/droid-boot.img /tmp/boot.img
 
 	if [ "$TARGET_DROID_LOS" = "1" ]; then
 		ui_print " "
@@ -192,14 +190,13 @@ log "New boot target: '$TARGET_PRETTY'"
 
 log "Patching /vendor init files..."
 if [ $TARGET = "droid" ]; then
-	(sed -i "s/service qti.*/service qti \/vendor\/bin\/qti/" /vendor/etc/init/hw/init.qcom.rc && sed -i "s/service time_daemon.*/service time_daemon \/vendor\/bin\/time_daemon/" /vendor/etc/init/hw/init.qcom.rc) || abort 7 "Failed to patch init files in /vendor."
+	sed -e "s/cpuset.cpus/cpus/g" -e "s/cpuset.mems/mems/g" -i /vendor/etc/init/hw/init.target.performance.rc || abort 7 "Failed to patch init files in /vendor."
 else
-	(sed -i "s/service qti.*/service qti \/vendor\/bin\/qti_HYBRIS_DISABLED/" /vendor/etc/init/hw/init.qcom.rc && sed -i "s/service time_daemon.*/service time_daemon \/vendor\/bin\/time_daemon_HYBRIS_DISABLED/" /vendor/etc/init/hw/init.qcom.rc) || abort 7 "Failed to patch init files in /vendor."
+	sed -e "s/cpus 0/cpuset.cpus 0/g" -e "s/mems 0/cpuset.mems 0/g" -i /vendor/etc/init/hw/init.target.performance.rc || abort 7 "Failed to patch init files in /vendor."
 fi
 
 log "Writing new boot image..."
-#show_progress 1 4
-dd if=/tmp/boot.img of=/dev/block/sde19 || abort 8 "Writing new boot image failed."
+dd if=/tmp/boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
 
 log "Cleaning up..."
 umount /vendor &> /dev/null
