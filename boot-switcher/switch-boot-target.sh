@@ -21,6 +21,8 @@ done
 
 # <<< Get TWRP output pipe fd <<<
 
+INIT_PERF="/vendor/etc/init/hw/init.target.performance.rc"
+
 # >>> Implement TWRP functions >>>
 
 ui_print() {
@@ -53,7 +55,7 @@ log() {
 
 # Treble
 if [ ! -r /dev/block/bootdevice/by-name/vendor ]; then
-	abort 1 "Vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
+	abort 1 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
 fi
 
 # Android
@@ -66,15 +68,15 @@ log "Android OS installation detected"
 
 # Sailfish OS
 umount /data &> /dev/null
-mount /data || abort 5 "Couldn't mount /data; running e2fsck and rebooting may help"
-[ -f /data/.stowaways/sailfishos/etc/os-release ] || abort 6 "Please install Sailfish OS before flashing this zip."
+mount /data || abort 5 "Couldn't mount /data; running e2fsck and rebooting may help."
+[[ -f /data/.stowaways/sailfishos/etc/os-release && -f /data/.stowaways/droid-boot.img ]] || abort 6 "Please install Sailfish OS before flashing this zip."
 
 log "Sailfish OS installation detected"
 log "Passed sanity checks (2/2)"
 
 # <<< Sanity checks <<<
 
-# >>> Script start >>>
+# >>> Script >>>
 
 # Boot target to switch to
 TARGET="droid"
@@ -84,23 +86,41 @@ TARGET_FILE="/data/.stowaways/droid_boot_target"
 if [ -f "$TARGET_FILE" ]; then # Sailfish OS
 	rm "$TARGET_FILE"
 
-	TARGET="sfos"
-	SFOS_REL=`cat /data/.stowaways/sailfishos/etc/os-release | grep VERSION_ID= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. '3.0.3.10'
-	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.0.3.10"
+	TARGET="hybris"
+	SFOS_REL=`cat /data/.stowaways/sailfishos/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. '3.0.3.10 (Hossa)'
+	TARGET_PRETTY="SailfishOS $SFOS_REL" # e.g. "SailfishOS 3.0.3.10 (Hossa)"
 else                           # LineageOS
 	touch "$TARGET_FILE"
 
-	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2 | sed -r 's/^.0+|.0+$//g'` # e.g. "8.1"
+	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2` # e.g. "8.1.0"
+	DROID_VER_MAJOR=`echo $DROID_VER | cut -d'.' -f1` # e.g. "8"
+	DROID_REL="" # e.g. "Oreo"
+
+	if [ "$DROID_VER_MAJOR" = "9" ]; then
+		DROID_REL="Pie"
+	elif [ "$DROID_VER_MAJOR" = "8" ]; then
+		DROID_REL="Oreo"
+	elif [ "$DROID_VER_MAJOR" = "7" ]; then
+		DROID_REL="Nougat"
+	elif [ "$DROID_VER_MAJOR" = "6" ]; then
+		DROID_REL="Marshmellow"
+	elif [ "$DROID_VER_MAJOR" = "5" ]; then
+		DROID_REL="Lollipop"
+	else
+		DROID_REL="KitKat"
+	fi
+
+	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Oreo)"
 
 	LOS_VER=`cat /system/build.prop | grep ro.lineage.build.version= | cut -d'=' -f2` # e.g. "15.1"
-	TARGET_PRETTY="Android $DROID_VER" # e.g. "Android 7.1.1"
-	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER ($DROID_VER)" || TARGET_DROID_LOS="0" # e.g. "LineageOS 15.1 (8.1)"
+	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
+	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS="0" # e.g. "LineageOS 15.1 (Oreo)"
 fi
 
 # Calculate centering offset indent on left
-target_len=`echo -n $TARGET_PRETTY | wc -m` # e.g. 21 for "LineageOS 15.1 (8.1)"
-start=`expr 52 - 25 - $target_len` # e.g. 7 
-start=`expr $start / 2` # e.g. 3
+target_len=`echo -n $TARGET_PRETTY | wc -m` # e.g. 21 for "LineageOS 15.1 (Oreo)"
+start=`expr 52 - 13 - $target_len` # e.g. 18
+start=`expr $start / 2` # e.g. 9
 log "indent offset is $start for '$TARGET_PRETTY'"
 
 indent=""
@@ -112,9 +132,7 @@ done
 ui_print " "
 ui_print "-=============- Boot Target Switcher -=============-"
 ui_print " "
-if [ "$TARGET" = "sfos" ]; then
-	ln -sf /tmp/hybris-boot.img /tmp/boot.img 
-
+if [ "$TARGET" = "hybris" ]; then
 	ui_print "                          .':oOl."
 	ui_print "                       ':c::;ol."
 	ui_print "                    .:do,   ,l."
@@ -136,8 +154,6 @@ if [ "$TARGET" = "sfos" ]; then
 	ui_print "       .,:lddo:'."
 	ui_print "      oxxo;."
 else
-	ln -sf /tmp/droid-boot.img /tmp/boot.img
-
 	if [ "$TARGET_DROID_LOS" = "1" ]; then
 		ui_print " "
 		ui_print " "
@@ -183,26 +199,27 @@ else
 	fi
 fi
 ui_print " "
-ui_print "${indent}Switching boot target to $TARGET_PRETTY"
+ui_print "${indent}Switching to $TARGET_PRETTY"
 ui_print "                   Please wait ..."
 
 log "New boot target: '$TARGET_PRETTY'"
 
+# Start
 log "Patching /vendor init files..."
 if [ $TARGET = "droid" ]; then
-	sed -e "s/cpuset.cpus/cpus/g" -e "s/cpuset.mems/mems/g" -i /vendor/etc/init/hw/init.target.performance.rc || abort 7 "Failed to patch init files in /vendor."
+	cp $INIT_PERF.bak $INIT_PERF || abort 7 "Failed to restore init files in /vendor."
 else
-	sed -e "s/cpus 0/cpuset.cpus 0/g" -e "s/mems 0/cpuset.mems 0/g" -i /vendor/etc/init/hw/init.target.performance.rc || abort 7 "Failed to patch init files in /vendor."
+	sed -e "s/cpus 0/cpuset.cpus 0/g" -e "s/mems 0/cpuset.mems 0/g" -i $INIT_PERF || abort 7 "Failed to patch init files in /vendor."
 fi
 
 log "Writing new boot image..."
-dd if=/tmp/boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
+dd if=/data/.stowaways/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
 
 log "Cleaning up..."
 umount /vendor &> /dev/null
 umount /system &> /dev/null
 
-# <<< Script end <<<
+# <<< Script <<<
 
 # Succeeded.
 log "Boot target updated successfully."
