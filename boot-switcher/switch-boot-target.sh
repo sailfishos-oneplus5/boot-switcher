@@ -63,7 +63,7 @@ umount /system &> /dev/null
 mount /system || abort 2 "Couldn't mount /system!"
 umount /vendor &> /dev/null
 mount -o rw /vendor || abort 3 "Couldn't mount /vendor!"
-[[ "$(cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2)" = "15.1" && -f /vendor/etc/init/hw/init.qcom.rc ]] || abort 4 "Please factory reset & dirty flash LineageOS 15.1 before this zip."
+[[ "$(cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2)" = "15.1" && -f $INIT_PERF ]] || abort 4 "Please factory reset & dirty flash LineageOS 15.1 before this zip."
 log "Android OS installation detected"
 
 # Sailfish OS
