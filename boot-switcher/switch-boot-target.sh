@@ -94,6 +94,7 @@ else                           # LineageOS
 
 	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2` # e.g. "8.1.0"
 	DROID_VER_MAJOR=`echo $DROID_VER | cut -d'.' -f1` # e.g. "8"
+	DROID_VER_MINOR=`echo $DROID_VER | cut -d'.' -f2` # e.g. "1"
 	DROID_REL="" # e.g. "Oreo"
 
 	if [ "$DROID_VER_MAJOR" = "9" ]; then
@@ -103,11 +104,17 @@ else                           # LineageOS
 	elif [ "$DROID_VER_MAJOR" = "7" ]; then
 		DROID_REL="Nougat"
 	elif [ "$DROID_VER_MAJOR" = "6" ]; then
-		DROID_REL="Marshmellow"
+		DROID_REL="Marshmallow"
 	elif [ "$DROID_VER_MAJOR" = "5" ]; then
 		DROID_REL="Lollipop"
-	else
-		DROID_REL="KitKat"
+	elif [ "$DROID_VER_MAJOR" = "4" ]; then
+		if [ "$DROID_VER_MINOR" = "4" ]; then
+			DROID_REL="KitKat"
+		elif [ "$DROID_VER_MINOR" = "0" ]; then
+			DROID_REL="ICS"
+		else
+			DROID_REL="Jelly Bean"
+		fi
 	fi
 
 	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Oreo)"
