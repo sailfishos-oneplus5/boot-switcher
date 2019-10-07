@@ -1,55 +1,50 @@
 #! /sbin/sh
-# This is a script to switch boot target between Android and Sailfish OS when executed.
+# A script to switch boot targets between Android and Sailfish OS.
+# https://git.io/fjSLY
 
-# >>> Get TWRP output pipe fd >>>
+# >>> TWRP init >>>
 
-OUTFD=0
+OUTFD="" # e.g. "/proc/self/fd/28"
 
-# we are probably running in embedded mode, see if we can find the right fd
-# we know the fd is a pipe and that the parent updater may have been started as
-# 'update-binary 3 fd zipfile'
+# Temporary: Find TWRP screen output FD for logging to it from here
 for FD in `ls /proc/$$/fd`; do
 	readlink /proc/$$/fd/$FD 2>/dev/null | grep pipe >/dev/null
 	if [ "$?" -eq "0" ]; then
 		ps | grep " 3 $FD " | grep -v grep >/dev/null
 		if [ "$?" -eq "0" ]; then
-			OUTFD=$FD
+			OUTFD="/proc/self/fd/$FD"
 			break
 		fi
 	fi
 done
 
-# <<< Get TWRP output pipe fd <<<
-
-INIT_PERF="/vendor/etc/init/hw/init.target.performance.rc"
-
-# >>> Implement TWRP functions >>>
-
+# Print some text ($1) on the screen
 ui_print() {
-	echo -en "ui_print $1\n" >> /proc/self/fd/$OUTFD
-	echo -en "ui_print\n" >> /proc/self/fd/$OUTFD
+	[ -z "$1" ] && echo -e "ui_print  \nui_print" > $OUTFD || echo -e "ui_print $@\nui_print" > $OUTFD
 }
 
-# TODO: Implement show_progress function
-
-# <<< Implement TWRP functions <<<
-
-# >>> Custom functions >>>
-
-# TODO Write to stderr if TWRP output in RED
-
-# Write error message & exit.
-# args: 1=errcode, 2=msg
+# Before quitting with an exit code ($1), show a message ($2)
 abort() {
-	ui_print "$2"
+	ui_print "E$1: $2"
 	exit $1
 }
 
+# <<< TWRP init <<<
+
+# >>> Custom functions >>>
+
+# Log some text ($1) for script debugging
 log() {
 	echo "switch-boot-target: $@"
 }
 
 # <<< Custom functions <<<
+
+# Constants & variables
+LOS_VER=""
+TARGET_LOS_VER="15.1"
+INIT_PERF="/vendor/etc/init/hw/init.target.performance.rc"
+ROOT="/data/.stowaways/sailfishos"
 
 # >>> Sanity checks >>>
 
@@ -59,17 +54,18 @@ if [ ! -r /dev/block/bootdevice/by-name/vendor ]; then
 fi
 
 # Android
-umount /system &> /dev/null
-mount /system || abort 2 "Couldn't mount /system!"
 umount /vendor &> /dev/null
-mount -o rw /vendor || abort 3 "Couldn't mount /vendor!"
-[[ "$(cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2)" = "15.1" && -f $INIT_PERF ]] || abort 4 "Please factory reset & dirty flash LineageOS 15.1 before this zip."
+mount -o rw /vendor || abort 2 "Couldn't mount /vendor!"
+umount /system &> /dev/null
+mount /system || abort 3 "Couldn't mount /system!"
+LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
+[[ "$LOS_VER" = "$TARGET_LOS_VER" && -f $INIT_PERF ]] || abort 4 "Please factory reset & dirty flash LineageOS $TARGET_LOS_VER before this zip."
 log "Android OS installation detected"
 
 # Sailfish OS
 umount /data &> /dev/null
 mount /data || abort 5 "Couldn't mount /data; running e2fsck and rebooting may help."
-[[ -f /data/.stowaways/sailfishos/etc/os-release && -f /data/.stowaways/droid-boot.img ]] || abort 6 "Please install Sailfish OS before flashing this zip."
+[[ -f $ROOT/etc/os-release && -f $ROOT/boot/droid-boot.img ]] || abort 6 "Please install Sailfish OS before flashing this zip."
 
 log "Sailfish OS installation detected"
 log "Passed sanity checks (2/2)"
@@ -80,22 +76,27 @@ log "Passed sanity checks (2/2)"
 
 # Boot target to switch to
 TARGET="droid"
-TARGET_DROID_LOS="1"
+TARGET_DROID_LOS=1
 TARGET_PRETTY=""
-TARGET_FILE="/data/.stowaways/droid_boot_target"
-if [ -f "$TARGET_FILE" ]; then # Sailfish OS
-	rm "$TARGET_FILE"
+TARGET_FILE="$ROOT/boot/droid_target"
+
+if [ -f $TARGET_FILE ]; then # Sailfish OS
+	rm $TARGET_FILE
 
 	TARGET="hybris"
-	SFOS_REL=`cat /data/.stowaways/sailfishos/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. '3.0.3.10 (Hossa)'
-	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.0.3.10 (Hossa)"
+	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.1.0.12 (Seitseminen)"
+	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.1.0.12 (Seitseminen)"
 else                           # LineageOS
 	touch "$TARGET_FILE"
 
-	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2` # e.g. "8.1.0"
-	DROID_VER_MAJOR=`echo $DROID_VER | cut -d'.' -f1` # e.g. "8"
-	DROID_VER_MINOR=`echo $DROID_VER | cut -d'.' -f2` # e.g. "1"
-	DROID_REL="" # e.g. "Oreo"
+	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2` # e.g. "9"
+	DROID_VER_MAJOR="$DROID_VER" # e.g. "9"
+	DROID_VER_MINOR="0"
+	if [[ "$DROID_VER" = *"."* ]]; then # e.g. "8.1.0"
+		DROID_VER_MAJOR=`echo $DROID_VER | cut -d'.' -f1` # e.g. "8"
+		DROID_VER_MINOR=`echo $DROID_VER | cut -d'.' -f2` # e.g. "1"
+	fi
+	DROID_REL="" # e.g. "Pie"
 
 	if [ "$DROID_VER_MAJOR" = "9" ]; then
 		DROID_REL="Pie"
@@ -117,23 +118,18 @@ else                           # LineageOS
 		fi
 	fi
 
-	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Oreo)"
-
-	LOS_VER=`cat /system/build.prop | grep ro.lineage.build.version= | cut -d'=' -f2` # e.g. "15.1"
+	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Pie)"
 	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
-	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS="0" # e.g. "LineageOS 15.1 (Oreo)"
+	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0 (Pie)"
 fi
 
 # Calculate centering offset indent on left
-target_len=`echo -n $TARGET_PRETTY | wc -m` # e.g. 21 for "LineageOS 15.1 (Oreo)"
-start=`expr 52 - 13 - $target_len` # e.g. 18
-start=`expr $start / 2` # e.g. 9
-log "indent offset is $start for '$TARGET_PRETTY'"
+offset=`echo -n $TARGET_PRETTY | wc -m` # Character length of the version string
+offset=`expr 52 - 13 - $offset`         # Remove constant string chars from offset calculation
+offset=`expr $start / 2`                # Get left offset char count instead of space on both sides
 
-indent=""
-for i in `seq 1 $start`; do
-	indent="${indent} "
-done
+# Build the left side indentation offset string
+for i in `seq 1 $offset`; do indent="${indent} "; done
 
 # Splash
 ui_print " "
@@ -220,7 +216,7 @@ else
 fi
 
 log "Writing new boot image..."
-dd if=/data/.stowaways/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
+dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
 
 log "Cleaning up..."
 umount /vendor &> /dev/null
