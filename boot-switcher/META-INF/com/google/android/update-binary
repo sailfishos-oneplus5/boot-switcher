@@ -5,7 +5,7 @@
 # >>> TWRP init >>>
 
 OUTFD="/proc/self/fd/$2" # e.g. "/proc/self/fd/28"
-ZIPFILE="$3"             # e.g. "/sdcard/Switch-Boot-Target-SFOS-LOS-cheeseburger.zip"
+ZIPFILE="$3"             # e.g. "/sdcard/Switch-Boot-Target-SFOS-LOS.zip"
 
 # Print some text ($1) on the screen
 ui_print() {
@@ -30,17 +30,15 @@ log() {
 # <<< Custom functions <<<
 
 # Constants & variables
-LOS_VER=""
-TARGET_LOS_VER="15.1"
-TARGET_DEVICE="OnePlus 5"
-CURRENT_DEVICE=`getprop ro.display.series`
+TARGET_DEVICES="cheeseburger dumpling"
+CURRENT_DEVICE=`getprop ro.product.device`
 INIT_PERF="/vendor/etc/init/hw/init.target.performance.rc"
 ROOT="/data/.stowaways/sailfishos"
 
 # >>> Sanity checks >>>
 
 # Device
-[ "$CURRENT_DEVICE" != "$TARGET_DEVICE" ] && abort 7 "This package is for '$TARGET_DEVICE' devices; this is a '$CURRENT_DEVICE'."
+echo $TARGET_DEVICES | grep -q $CURRENT_DEVICE || abort 7 "This package is for '$TARGET_DEVICES' devices; this is a '$CURRENT_DEVICE'."
 
 # Treble
 if [ ! -r /dev/block/bootdevice/by-name/vendor ]; then
@@ -52,8 +50,7 @@ umount /vendor &> /dev/null
 mount -o rw /vendor || abort 2 "Couldn't mount /vendor!"
 umount /system &> /dev/null
 mount /system || abort 3 "Couldn't mount /system!"
-LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
-[[ "$LOS_VER" = "$TARGET_LOS_VER" && -f $INIT_PERF ]] || abort 4 "Please factory reset & dirty flash LineageOS $TARGET_LOS_VER before this zip."
+[ -f $INIT_PERF ] || abort 4 "Please factory reset & dirty flash LineageOS before this zip."
 log "Android OS installation detected"
 
 # Sailfish OS
@@ -114,6 +111,7 @@ else                           # LineageOS
 
 	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Pie)"
 	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
+	LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
 	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0 (Pie)"
 fi
 
