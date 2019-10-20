@@ -5,29 +5,23 @@
 # >>> TWRP init >>>
 
 OUTFD="/proc/self/fd/$2" # e.g. "/proc/self/fd/28"
-ZIPFILE="$3"             # e.g. "/sdcard/Switch-Boot-Target-SFOS-LOS.zip"
+
+# Set progress bar percentage using a fraction ($1) in range 0.00 - 1.00
+set_progress() { echo -e "set_progress $1\n" > $OUTFD; }
 
 # Print some text ($1) on the screen
-ui_print() {
-	[ -z "$1" ] && echo -e "ui_print  \nui_print" > $OUTFD || echo -e "ui_print $@\nui_print" > $OUTFD
-}
-
-# Before quitting with an exit code ($1), show a message ($2)
-abort() {
-	ui_print "E$1: $2"
-	exit $1
-}
-
-# <<< TWRP init <<<
-
-# >>> Custom functions >>>
+ui_print() { [ -z "$1" ] && echo -e "ui_print  \nui_print" > $OUTFD || echo -e "ui_print $@\nui_print" > $OUTFD; }
 
 # Log some text ($1) for script debugging
-log() {
-	echo "boot-switcher: $@"
-}
+log() { echo "boot-switcher: $@"; }
 
-# <<< Custom functions <<<
+# Remove package residue files from /tmp and unmount partitions
+cleanup() { log "Cleaning up..."; umount /vendor &> /dev/null; umount /system &> /dev/null; rm -rf $FILES/; }
+
+# Before quitting with an exit code ($1), show a message ($2)
+abort() { ui_print "E$1: $2"; cleanup; exit $1; }
+
+# <<< TWRP init <<<
 
 # Constants & variables
 TARGET_DEVICES="cheeseburger dumpling"
@@ -41,9 +35,7 @@ ROOT="/data/.stowaways/sailfishos"
 echo $TARGET_DEVICES | grep -q $CURRENT_DEVICE || abort 7 "This package is for '$TARGET_DEVICES' devices; this is a '$CURRENT_DEVICE'."
 
 # Treble
-if [ ! -r /dev/block/bootdevice/by-name/vendor ]; then
-	abort 1 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
-fi
+[ -r /dev/block/bootdevice/by-name/vendor ] || abort 1 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
 
 # Android
 umount /vendor &> /dev/null
@@ -57,13 +49,15 @@ log "Android OS installation detected"
 umount /data &> /dev/null
 mount /data || abort 5 "Couldn't mount /data; running e2fsck and rebooting may help."
 [[ -f $ROOT/etc/os-release && -f $ROOT/boot/droid-boot.img ]] || abort 6 "Please install Sailfish OS before flashing this zip."
-
 log "Sailfish OS installation detected"
 log "Passed sanity checks (2/2)"
 
 # <<< Sanity checks <<<
 
 # >>> Script >>>
+
+# Reset shown progress bar to 0%
+set_progress 0
 
 # Boot target to switch to
 TARGET="droid"
@@ -124,9 +118,9 @@ offset=`expr $offset / 2`                # Get left offset char count instead of
 for i in `seq 1 $offset`; do indent="${indent} "; done
 
 # Splash
-ui_print " "
+ui_print
 ui_print "-=============- Boot Target Switcher -=============-"
-ui_print " "
+ui_print
 if [ "$TARGET" = "hybris" ]; then
 	ui_print "                          .':oOl."
 	ui_print "                       ':c::;ol."
@@ -150,10 +144,10 @@ if [ "$TARGET" = "hybris" ]; then
 	ui_print "      oxxo;."
 else
 	if [ "$TARGET_DROID_LOS" = "1" ]; then
-		ui_print " "
-		ui_print " "
-		ui_print " "
-		ui_print " "
+		ui_print
+		ui_print
+		ui_print
+		ui_print
 		ui_print "                         __"
 		ui_print "                      :clllcc:"
 		ui_print "                   :okOOOOOOOOko:"
@@ -165,11 +159,11 @@ else
 		ui_print "   :kXx   lK0l   cOKkl:      :lkKOc   c0Ko   xXk:"
 		ui_print "    l0Kkxx0Kd:    :dO0OkxddxkO0Od:    :dK0xxkK0l"
 		ui_print "     coxkkdl        :ldxkkkkxdl:        ldkkxoc"
-		ui_print " "
-		ui_print " "
-		ui_print " "
-		ui_print " "
-		ui_print " "
+		ui_print
+		ui_print
+		ui_print
+		ui_print
+		ui_print
 	else
 		ui_print "                  .od.        .do."
 		ui_print "                   'kOolllllloOk'"
@@ -193,10 +187,9 @@ else
 		ui_print "                   ,k00k,  ,k00k,"
 	fi
 fi
-ui_print " "
+ui_print
 ui_print "${indent}Switching to $TARGET_PRETTY"
 ui_print "                   Please wait ..."
-
 log "New boot target: '$TARGET_PRETTY'"
 
 # Start
@@ -210,14 +203,11 @@ fi
 log "Writing new boot image..."
 dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
 
-log "Cleaning up..."
-umount /vendor &> /dev/null
-umount /system &> /dev/null
-
 # <<< Script <<<
 
 # Succeeded.
 log "Boot target updated successfully."
 ui_print "            All done, enjoy your new OS!"
-ui_print " "
+ui_print
+cleanup
 exit 0
