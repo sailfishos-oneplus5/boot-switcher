@@ -16,7 +16,7 @@ ui_print() { [ -z "$1" ] && echo -e "ui_print  \nui_print" > $OUTFD || echo -e "
 log() { echo "boot-switcher: $@"; }
 
 # Remove package residue files from /tmp and unmount partitions
-cleanup() { log "Cleaning up..."; umount /vendor &> /dev/null; umount /system &> /dev/null; rm -rf $FILES/; }
+cleanup() { log "Cleaning up..."; rm -rf $FILES/; }
 
 # Before quitting with an exit code ($1), show a message ($2)
 abort() { ui_print "E$1: $2"; cleanup; exit $1; }
@@ -26,7 +26,6 @@ abort() { ui_print "E$1: $2"; cleanup; exit $1; }
 # Constants & variables
 TARGET_DEVICES="cheeseburger dumpling"
 CURRENT_DEVICE=`getprop ro.product.device`
-INIT_PERF="/vendor/etc/init/hw/init.target.performance.rc"
 ROOT="/data/.stowaways/sailfishos"
 
 # >>> Sanity checks >>>
@@ -37,20 +36,10 @@ echo $TARGET_DEVICES | grep -q $CURRENT_DEVICE || abort 7 "This package is for '
 # Treble
 [ -r /dev/block/bootdevice/by-name/vendor ] || abort 1 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
 
-# Android
-umount /vendor &> /dev/null
-mount -o rw /vendor || abort 2 "Couldn't mount /vendor!"
-umount /system &> /dev/null
-mount /system || abort 3 "Couldn't mount /system!"
-[ -f $INIT_PERF ] || abort 4 "Please factory reset & dirty flash LineageOS before this zip."
-log "Android OS installation detected"
-
 # Sailfish OS
-umount /data &> /dev/null
-mount /data || abort 5 "Couldn't mount /data; running e2fsck and rebooting may help."
-[[ -f $ROOT/etc/os-release && -f $ROOT/boot/droid-boot.img ]] || abort 6 "Please install Sailfish OS before flashing this zip."
-log "Sailfish OS installation detected"
-log "Passed sanity checks (2/2)"
+(mount | grep -q /data || mount /data) || abort 2 "Couldn't mount /data; running e2fsck and rebooting may help."
+[ -f $ROOT/boot/droid-boot.img ] || abort 3 "Please install Android & Sailfish OS before flashing this zip."
+log "Sailfish OS installation detected (assuming Android as well)"
 
 # <<< Sanity checks <<<
 
@@ -69,11 +58,12 @@ if [ -f $TARGET_FILE ]; then # Sailfish OS
 	rm $TARGET_FILE
 
 	TARGET="hybris"
-	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.1.0.12 (Seitseminen)"
-	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.1.0.12 (Seitseminen)"
-else                           # LineageOS
+	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.2.0.12 (Torronsuo)"
+	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.2.0.12 (Torronsuo)"
+else                         # Android
 	touch "$TARGET_FILE"
 
+	(mount | grep -q /system || mount /system) || abort 4 "Couldn't mount /system!"
 	DROID_VER=`cat /system/build.prop | grep ro.build.version.release | cut -d'=' -f2` # e.g. "9"
 	DROID_VER_MAJOR="$DROID_VER" # e.g. "9"
 	DROID_VER_MINOR="0"
@@ -107,12 +97,13 @@ else                           # LineageOS
 	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
 	LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
 	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0 (Pie)"
+	umount /system &
 fi
 
 # Calculate centering offset indent on left
 offset=`echo -n $TARGET_PRETTY | wc -m` # Character length of the version string
 offset=`expr 52 - 13 - $offset`         # Remove constant string chars from offset calculation
-offset=`expr $offset / 2`                # Get left offset char count instead of space on both sides
+offset=`expr $offset / 2`               # Get left offset char count instead of space on both sides
 
 # Build the left side indentation offset string
 for i in `seq 1 $offset`; do indent="${indent} "; done
@@ -193,15 +184,8 @@ ui_print "                   Please wait ..."
 log "New boot target: '$TARGET_PRETTY'"
 
 # Start
-log "Patching /vendor init files..."
-if [ $TARGET = "droid" ]; then
-	cp $INIT_PERF.bak $INIT_PERF || abort 7 "Failed to restore init files in /vendor."
-else
-	sed -e "s/cpus 0/cpuset.cpus 0/g" -e "s/mems 0/cpuset.mems 0/g" -i $INIT_PERF || abort 7 "Failed to patch init files in /vendor."
-fi
-
-log "Writing new boot image..."
-dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 8 "Writing new boot image failed."
+log "Writing $TARGET-boot image..."
+dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 5 "Writing new boot image failed."
 
 # <<< Script <<<
 
