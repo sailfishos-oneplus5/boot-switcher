@@ -31,6 +31,7 @@ ROOT="/data/.stowaways/sailfishos"
 # >>> Sanity checks >>>
 
 # Device
+[ -z "$CURRENT_DEVICE" ] && CURRENT_DEVICE=`getprop ro.build.product`
 echo $TARGET_DEVICES | grep -q $CURRENT_DEVICE || abort 7 "This package is for '$TARGET_DEVICES' devices; this is a '$CURRENT_DEVICE'."
 
 # Treble
