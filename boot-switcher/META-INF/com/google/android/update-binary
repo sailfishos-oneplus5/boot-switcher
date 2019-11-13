@@ -23,15 +23,23 @@ abort() { ui_print "E$1: $2"; cleanup; exit $1; }
 
 # <<< TWRP init <<<
 
+# >>> Custom functions >>>
+
+# Verify device boardname validity (e.g. not unset, no spaces / uppercase chars)
+invalid_device() { [[ -z "$CURRENT_DEVICE" || "$CURRENT_DEVICE" = *" "* || "$CURRENT_DEVICE" =~ [A-Z] ]]; }
+
+# <<< Custom functions <<<
+
 # Constants & variables
 TARGET_DEVICES="cheeseburger dumpling"
-CURRENT_DEVICE=`getprop ro.product.device`
+CURRENT_DEVICE=`getprop ro.omni.device`
 ROOT="/data/.stowaways/sailfishos"
 
 # >>> Sanity checks >>>
 
 # Device
-[ -z "$CURRENT_DEVICE" ] && CURRENT_DEVICE=`getprop ro.build.product`
+invalid_device && CURRENT_DEVICE=`getprop ro.product.device`
+invalid_device && CURRENT_DEVICE=`getprop ro.build.product`
 echo $TARGET_DEVICES | grep -q $CURRENT_DEVICE || abort 7 "This package is for '$TARGET_DEVICES' devices; this is a '$CURRENT_DEVICE'."
 
 # Treble
