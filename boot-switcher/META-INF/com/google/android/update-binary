@@ -26,7 +26,7 @@ abort() { ui_print "E$1: $2"; cleanup; exit $1; }
 # >>> Custom functions >>>
 
 # Verify device boardname validity (e.g. not unset, no spaces / uppercase chars)
-invalid_device() { [[ -z "$CURRENT_DEVICE" || "$CURRENT_DEVICE" = *" "* || "$CURRENT_DEVICE" =~ [A-Z] ]]; }
+invalid_device() { [[ -z "$CURRENT_DEVICE" || "$CURRENT_DEVICE" = *" "* || `echo "$CURRENT_DEVICE" | grep -q [A-Z]` ]]; }
 
 # <<< Custom functions <<<
 
