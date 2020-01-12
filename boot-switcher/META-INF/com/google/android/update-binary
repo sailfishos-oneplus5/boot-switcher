@@ -15,11 +15,8 @@ ui_print() { [ -z "$1" ] && echo -e "ui_print  \nui_print" > $OUTFD || echo -e "
 # Log some text ($1) for script debugging
 log() { echo "boot-switcher: $@"; }
 
-# Remove package residue files from /tmp and unmount partitions
-cleanup() { log "Cleaning up..."; rm -rf $FILES/; }
-
 # Before quitting with an exit code ($1), show a message ($2)
-abort() { ui_print "E$1: $2"; cleanup; exit $1; }
+abort() { ui_print "E$1: $2"; exit $1; }
 
 # <<< TWRP init <<<
 
@@ -202,5 +199,4 @@ dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort
 log "Boot target updated successfully."
 ui_print "            All done, enjoy your new OS!"
 ui_print
-cleanup
 exit 0
