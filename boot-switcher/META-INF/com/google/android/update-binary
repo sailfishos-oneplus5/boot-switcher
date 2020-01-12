@@ -67,8 +67,8 @@ if [ -f $TARGET_FILE ]; then # Sailfish OS
 	rm $TARGET_FILE
 
 	TARGET="hybris"
-	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.2.0.12 (Torronsuo)"
-	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.2.0.12 (Torronsuo)"
+	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.2.1.20 (Nuuksio)"
+	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.2.1.20 (Nuuksio)"
 else                         # Android
 	touch "$TARGET_FILE"
 
@@ -104,8 +104,8 @@ else                         # Android
 
 	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Pie)"
 	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
-	LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
-	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0 (Pie)"
+	LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "15.1"
+	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 15.1 (Oreo)"
 	umount /system &
 fi
 
