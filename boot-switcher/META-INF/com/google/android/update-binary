@@ -103,13 +103,12 @@ else                         # Android
 	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
 	LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
 	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0 (Pie)"
-	umount /system &
 fi
 
 # Calculate centering offset indent on left
-offset=`echo -n $TARGET_PRETTY | wc -m` # Character length of the version string
-offset=`expr 52 - 13 - $offset`         # Remove constant string chars from offset calculation
-offset=`expr $offset / 2`               # Get left offset char count instead of space on both sides
+offset=`echo -n $TARGET_PRETTY | wc -m 2> /dev/null` # Character length of the version string
+offset=`expr 52 - 13 - $offset`                      # Remove constant string chars from offset calculation
+offset=`expr $offset / 2`                            # Get left offset char count instead of space on both sides
 
 # Build the left side indentation offset string
 for i in `seq 1 $offset`; do indent="${indent} "; done
@@ -199,4 +198,5 @@ dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort
 log "Boot target updated successfully."
 ui_print "            All done, enjoy your new OS!"
 ui_print
+umount /system
 exit 0
