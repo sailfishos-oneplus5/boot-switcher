@@ -31,6 +31,9 @@ invalid_device() { [[ -z "$CURRENT_DEVICE" || "$CURRENT_DEVICE" = *" "* || `echo
 TARGET_DEVICES="cheeseburger dumpling"
 CURRENT_DEVICE=`getprop ro.omni.device`
 ROOT="/data/.stowaways/sailfishos"
+PARTITION_PREFIX="/dev/block/bootdevice/by-name"
+PARTITION_BOOT="$PARTITION_PREFIX/boot"
+PARTITION_VENDOR="$PARTITION_PREFIX/vendor"
 
 # >>> Sanity checks >>>
 
@@ -40,7 +43,7 @@ invalid_device && CURRENT_DEVICE=`getprop ro.build.product`
 echo $TARGET_DEVICES | grep -q $CURRENT_DEVICE || abort 7 "This package is for '$TARGET_DEVICES' devices; this is a '$CURRENT_DEVICE'."
 
 # Treble
-[ -r /dev/block/bootdevice/by-name/vendor ] || abort 1 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
+[ -r $PARTITION_VENDOR ] || abort 1 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
 
 # Sailfish OS
 (mount | grep -q /data || mount /data) || abort 2 "Couldn't mount /data; running e2fsck and rebooting may help."
@@ -190,7 +193,7 @@ log "New boot target: '$TARGET_PRETTY'"
 
 # Start
 log "Writing $TARGET-boot image..."
-dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot bs=4m || abort 5 "Writing new boot image failed."
+dd if=$ROOT/boot/$TARGET-boot.img of=$PARTITION_BOOT bs=4m || abort 5 "Writing new boot image failed."
 
 # <<< Script <<<
 
