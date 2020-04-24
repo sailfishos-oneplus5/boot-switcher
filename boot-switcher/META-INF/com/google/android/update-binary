@@ -190,7 +190,7 @@ log "New boot target: '$TARGET_PRETTY'"
 
 # Start
 log "Writing $TARGET-boot image..."
-dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot || abort 5 "Writing new boot image failed."
+dd if=$ROOT/boot/$TARGET-boot.img of=/dev/block/bootdevice/by-name/boot bs=4m || abort 5 "Writing new boot image failed."
 
 # <<< Script <<<
 
