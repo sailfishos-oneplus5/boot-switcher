@@ -67,8 +67,8 @@ if [ -f $TARGET_FILE ]; then # Sailfish OS
 	rm $TARGET_FILE
 
 	TARGET="hybris"
-	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.2.0.12 (Torronsuo)"
-	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.2.0.12 (Torronsuo)"
+	SFOS_REL=`cat $ROOT/etc/os-release | grep VERSION_ID= | cut -d'=' -f2 | cut -d'"' -f2` # e.g. "3.4.0.24"
+	TARGET_PRETTY="Sailfish OS $SFOS_REL" # e.g. "Sailfish OS 3.4.0.24"
 else                         # Android
 	touch "$TARGET_FILE"
 
@@ -80,32 +80,9 @@ else                         # Android
 		DROID_VER_MAJOR=`echo $DROID_VER | cut -d'.' -f1` # e.g. "8"
 		DROID_VER_MINOR=`echo $DROID_VER | cut -d'.' -f2` # e.g. "1"
 	fi
-	DROID_REL="" # e.g. "Pie"
-
-	if [ "$DROID_VER_MAJOR" = "9" ]; then
-		DROID_REL="Pie"
-	elif [ "$DROID_VER_MAJOR" = "8" ]; then
-		DROID_REL="Oreo"
-	elif [ "$DROID_VER_MAJOR" = "7" ]; then
-		DROID_REL="Nougat"
-	elif [ "$DROID_VER_MAJOR" = "6" ]; then
-		DROID_REL="Marshmallow"
-	elif [ "$DROID_VER_MAJOR" = "5" ]; then
-		DROID_REL="Lollipop"
-	elif [ "$DROID_VER_MAJOR" = "4" ]; then
-		if [ "$DROID_VER_MINOR" = "4" ]; then
-			DROID_REL="KitKat"
-		elif [ "$DROID_VER_MINOR" = "0" ]; then
-			DROID_REL="ICS"
-		else
-			DROID_REL="Jelly Bean"
-		fi
-	fi
-
-	[ ! -z $DROID_REL ] && DROID_REL=" ($DROID_REL)" # e.g. " (Pie)"
-	TARGET_PRETTY="Android $DROID_VER$DROID_REL" # e.g. "Android 7.1.1 (Nougat)"
+	TARGET_PRETTY="Android $DROID_VER" # e.g. "Android 7.1.1"
 	LOS_VER=`cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` # e.g. "16.0"
-	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER$DROID_REL" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0 (Pie)"
+	[ ! -z $LOS_VER ] && TARGET_PRETTY="LineageOS $LOS_VER" || TARGET_DROID_LOS=0 # e.g. "LineageOS 16.0"
 fi
 
 # Calculate centering offset indent on left
